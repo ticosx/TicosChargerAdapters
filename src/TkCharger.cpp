@@ -1,6 +1,5 @@
 #include "TkCharger.h"
-#include <stdio.h>
-#include "sdkconfig.h"
+#include "Log.h"
 //ADC头文件
 #include "driver/adc.h"
 #include "esp_adc_cal.h"
@@ -19,40 +18,38 @@ bool TkCharger::begin(){
     esp_err_t err = ESP_OK;
     err = adc1_config_width(ADC_WIDTH_BIT_12);// 12位分辨率
     if (err) {
-        printf("adc1_config_width failed: %d", err);
+        logInfo("adc1_config_width failed: %d", err);
         return false;
     }
-    err = adc1_config_channel_atten(ADC_CHN, ADC_ATTEN_DB_11);// 电压输入衰减
+    err = adc1_config_channel_atten(chn, ADC_ATTEN_DB_11);// 电压输入衰减
     if (err) {
-        printf("adc1_config_channel_atten failed: %d", err);
+        logInfo("adc1_config_channel_atten failed: %d", err);
         return false;
     }
     // 为斜率曲线分配内存
-    esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, ADC_VEF, &chg_adc_chars);
+    esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, vef, &chg_adc_chars);
     
-    printf("esp_adc_cal_characterize: %d", val_type);
+    logInfo("esp_adc_cal_characterize: %d", val_type);
     //set det charger io
-    gpio_pad_select_gpio(DET_PIN); //
-    gpio_set_direction(DET_PIN, GPIO_MODE_INPUT);// 设置GPIO为输入
-   // pinMode(DET_PIN, INPUT_PULLUP);
+    gpio_pad_select_gpio(detio); //
+    gpio_set_direction(detio, GPIO_MODE_INPUT);// 设置GPIO为输入
+   // pinMode(detio, INPUT_PULLUP);
     return true;
 }
 
 bool TkCharger::end(){
-    gpio_reset_pin(DET_PIN);
-    gpio_reset_pin(ADC_PIN);
+    gpio_reset_pin(detio);
+    gpio_reset_pin(adcio);
     return true;
 }
 
 bool TkCharger::init() {
 
-    ADC_CHN = (adc1_channel_t)info->adc_chn;    
-    //DET_PIN = static_cast<gpio_num_t>(info->det_pin);
-   // ADC_PIN = static_cast<gpio_num_t>(info->adc_pin);
-    DET_PIN = (gpio_num_t)info->det_pin;
-    ADC_PIN = (gpio_num_t)info->adc_pin;
-    ADC_VEF = info->adc_vref;
-    printf("TkCharger_init ,ADC_CHN = %d,ADC_VEF= %d,DET_PIN:%d\n",ADC_CHN,ADC_VEF,DET_PIN);
+    chn = (adc1_channel_t)info->adc_chn;
+    detio = (gpio_num_t)info->det_pin;
+    adcio = (gpio_num_t)info->adc_pin;
+    vef = info->adc_vref;
+    logInfo("TkCharger_init ,ADC_CHN = %d,ADC_VEF= %d,DET_PIN:%d\n",chn,vef,detio);
 
     begin();
 
@@ -60,7 +57,7 @@ bool TkCharger::init() {
 }
 bool TkCharger::deinit() {
     end();
-    printf("charger deinit \n");
+    logInfo("charger deinit \n");
     return true;
 }
 
@@ -85,7 +82,7 @@ uint32_t TkCharger::getBatteryVolt(void)
 
     for(i=0;i<ADC_QUEUE_SIZE;i++)//一次读取10个
     {
-        u32AdcQueue[i]= adc1_get_raw(ADC_CHN);// 采集ADC原始值
+        u32AdcQueue[i]= adc1_get_raw(chn);// 采集ADC原始值
     }  
 
     adc_max = u32AdcQueue[0];
@@ -130,7 +127,7 @@ uint32_t TkCharger::getBatteryAdcValue(void)
 
     for(i=0;i<ADC_QUEUE_SIZE;i++)//一次读取10个
     {
-        u32AdcQueue[i]= adc1_get_raw(ADC_CHN);// 采集ADC原始值
+        u32AdcQueue[i]= adc1_get_raw(chn);// 采集ADC原始值
     }  
 
     adc_max = u32AdcQueue[0];
@@ -178,7 +175,7 @@ uint8_t TkCharger::getBatteryCap(void)
                 }
             }
             i8Cap = 100-u8i;
-          printf(" NoChargeTable ,i8Cap:%d,u8i:%d\n",i8Cap,u8i);
+           //logInfo(" NoChargeTable ,i8Cap:%d,u8i:%d\n",i8Cap,u8i);
     }
     else//充电
     {
@@ -190,7 +187,7 @@ uint8_t TkCharger::getBatteryCap(void)
                 }
             }
             i8Cap = u8i-1;
-             printf(" ChargingTable ,i8Cap:%d,u8i:%d\n",i8Cap,u8i);
+            //logInfo(" ChargingTable ,i8Cap:%d,u8i:%d\n",i8Cap,u8i);
     }
   
 
@@ -208,13 +205,11 @@ uint8_t TkCharger::getChargerStatus(void)
 {
     uint8_t ret = 0;
 
-    if(gpio_get_level(DET_PIN) == 0){
-   // if(digitalRead(DET_PIN) == 0){
+    if(gpio_get_level(detio) == 0){
         ret = 1;
     }else{
         ret = 0;
     }
-    ChgStatus = ret ;
-    printf("getChargerStatus ,ChgStatus = %d\n",ChgStatus);
+    //logInfo("getChargerStatus ,ChgStatus :%d\n",ret);
     return ret ;
 }

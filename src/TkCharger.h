@@ -1,5 +1,5 @@
-#ifndef TEMPNTC_h
-#define TEMPNTC_h
+#ifndef CHARGER_h
+#define CHARGER_h
 
 #include <Arduino.h>
 #include "ChargerAdapter.h"
@@ -7,6 +7,7 @@
 #include "driver/adc.h"
 #include "esp_adc_cal.h"
 #include "driver/gpio.h"
+
 typedef enum {
     BAT_NO_CHARGE = 0,  /* */
     BAT_CHARGING,
@@ -84,12 +85,11 @@ class TkCharger: public ChargerAdapter{
     private:
         bool begin();
         bool end() ;
-        gpio_num_t ADC_PIN;
-        gpio_num_t DET_PIN;
-        adc1_channel_t ADC_CHN = ADC1_CHANNEL_4;
-        uint16_t ADC_VEF = 3300;
+        gpio_num_t adcio;
+        gpio_num_t detio;
+        adc1_channel_t chn = ADC1_CHANNEL_4;
+        uint16_t vef = 3300;
         uint32_t u32AdcQueue[10];
-        uint8_t ChgStatus = 0;
 };
 
 #endif
